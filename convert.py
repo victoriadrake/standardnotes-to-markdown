@@ -69,27 +69,51 @@ def main():
             note: dict = {key: value for key, value in obj.items() if key in fields}
             notes_list.append(note)
 
+    # Tag notes
+    tags_list = []
+    for obj in items:
+        if obj["content_type"] == "Tag":
+            fields = ["content"]
+            tag: dict = {key: value for key, value in obj.items() if key in fields}
+            tags_list.append(tag)
+    
     # Loop the notes list
     note: dict
     notes_list: list
     for note in notes_list:
-        # Add a bit of the uuid to mitigate duplicate filenames
-        try:
-            filename = f'{note["content"]["title"]}_{note["uuid"][:8]}.md'.replace(
-                "/", "or"
-            ).replace(" ", "_")
-        except KeyError:
+        tag_text = "\n" # Reset for each note
+        # Optionally, update this to add a bit of the uuid to mitigate duplicate filenames
+        if note["content"]["title"] == "":
             # If no title exists, use the creation date
-            filename = f'{note["created_at"][:10]}_{note["uuid"][:8]}.md'
+            filename = f'{note["created_at"][:10]}.md'
+        else:
+            name = (
+                f'{note["content"]["title"]}_{note["created_at"][:10]}'.replace("/", "or")
+                .replace(" ", "_")
+                .replace(".", "")
+                .replace(":", "")
+                .replace("'", "")
+                .replace("?", "")
+                .replace('"', "")
+            )
+            filename = f'{name}.md'
 
+        # Loop the tags list
+        tag: dict
+        tags_list: list
+        for tag in tags_list:
+            if str(note["uuid"]) in str(tag["content"]["references"]):
+                tag_text = tag_text + f'#{tag["content"]["title"]} '
         # Create a new .md file
         outpath = os.path.join(dirname, filename)
         # The str method renders newlines
-        processed = str(note["content"]["text"])
+        content = str(note["content"]["text"])
+        processed = f'{content}\n{tag_text}'
         writeMarkdown(processed, outpath)
         # Preserve the note's last modified time
         setModTime(outpath, note["updated_at"])
         count += 1
+
 
     end = counter.time()
     time = end - start
